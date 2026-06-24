@@ -64,7 +64,12 @@ class MediumClient:
             return post
 
     def cookie_string(self) -> str:
-        auth_path = self.auth_state_file or os.environ.get("MEDIUM_AUTH_STATE_FILE")
+        auth_path = (
+            self.auth_state_file
+            or os.environ.get("MEDIUM_AUTH_JSON")
+            or os.environ.get("MEDIUM_AUTH_STATE_FILE")
+            or str(Path.home() / ".config" / "medium-auth.json")
+        )
         if auth_path:
             path = Path(auth_path).expanduser()
             if path.is_file():
@@ -82,8 +87,8 @@ class MediumClient:
             return f"sid={sid_value}"
 
         raise MediumClientError(
-            "No Medium auth found. Set MEDIUM_AUTH_STATE_FILE to a Playwright storage-state JSON "
-            "or set MEDIUM_SESSION_COOKIE to your Medium sid cookie."
+            "No Medium auth found. Pass --auth-json, set MEDIUM_AUTH_JSON or MEDIUM_AUTH_STATE_FILE, "
+            "create ~/.config/medium-auth.json, or set MEDIUM_SESSION_COOKIE to your Medium sid cookie."
         )
 
     def headers(self, cookie_string: str) -> dict[str, str]:

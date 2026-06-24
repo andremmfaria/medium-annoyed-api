@@ -6,12 +6,12 @@ usage() {
 Run GitHub Actions workflows locally with act.
 
 Usage:
-  ./scripts/run-workflows-locally.sh [workflow ...]
+  ./scripts/run-workflows.sh [workflow ...]
 
 Examples:
-  ./scripts/run-workflows-locally.sh
-  ./scripts/run-workflows-locally.sh ci.yml
-  ./scripts/run-workflows-locally.sh release.yml
+  ./scripts/run-workflows.sh
+  ./scripts/run-workflows.sh ci.yml
+  ./scripts/run-workflows.sh release.yml
 
 Notes:
   - Requires: act, Docker
@@ -42,7 +42,7 @@ cd "$REPO_ROOT"
 
 workflows=("$@")
 if [[ ${#workflows[@]} -eq 0 ]]; then
-  workflows=("ci.yml" "release.yml")
+  workflows=("ci.yml" "move-version-tag.yml" "release.yml")
 fi
 
 event_file=$(mktemp)

@@ -38,7 +38,13 @@ def convert(file_path: str, pretty: bool) -> None:
 @click.option("--status", type=click.Choice(["draft", "public"]), default="draft", show_default=True)
 @click.option("--tags", "-t", default=None, help="Override tags with a comma-separated list.")
 @click.option("--sid", default=None, help="Medium sid cookie; defaults to MEDIUM_SESSION_COOKIE.")
-@click.option("--auth-state", default=None, help="Playwright storage-state JSON; defaults to MEDIUM_AUTH_STATE_FILE.")
+@click.option(
+    "--auth-json",
+    "--auth-state",
+    "auth_json",
+    default=None,
+    help="Medium auth JSON path; defaults to MEDIUM_AUTH_JSON, MEDIUM_AUTH_STATE_FILE, then ~/.config/medium-auth.json.",
+)
 @click.option("--dry-run", is_flag=True, help="Print payload summary without calling Medium.")
 @click.option("--write-metadata", is_flag=True, help="Write medium_draft_id and medium_edit_url to frontmatter.")
 def draft(
@@ -46,13 +52,13 @@ def draft(
     status: str,
     tags: str | None,
     sid: str | None,
-    auth_state: str | None,
+    auth_json: str | None,
     dry_run: bool,
     write_metadata: bool,
 ) -> None:
     """Create a Medium draft from a Markdown article."""
     try:
-        asyncio.run(_draft_async(file_path, status, tags, sid, auth_state, dry_run, write_metadata))
+        asyncio.run(_draft_async(file_path, status, tags, sid, auth_json, dry_run, write_metadata))
     except MediumClientError as exc:
         raise click.ClickException(str(exc)) from exc
 
@@ -62,7 +68,7 @@ async def _draft_async(
     status: str,
     tags: str | None,
     sid: str | None,
-    auth_state: str | None,
+    auth_json: str | None,
     dry_run: bool,
     write_metadata: bool,
 ) -> None:
@@ -85,7 +91,7 @@ async def _draft_async(
         click.echo(json.dumps(summary, indent=2, ensure_ascii=False))
         return
 
-    client = MediumClient(auth_state_file=auth_state, sid=sid)
+    client = MediumClient(auth_state_file=auth_json, sid=sid)
     result = await client.create_draft(
         title=article.title,
         paragraphs=paragraphs,

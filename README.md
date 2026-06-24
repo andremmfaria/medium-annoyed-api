@@ -28,7 +28,7 @@ Releases are tag-driven. The tag must:
 For local workflow simulation:
 
 ```bash
-./scripts/run-workflows-locally.sh
+./scripts/run-workflows.sh
 ```
 
 ## Dry-run conversion
@@ -42,8 +42,20 @@ uv run medium-annoyed-api convert --file ../articles/articles/example/example.md
 Provide either a full Playwright storage-state file:
 
 ```bash
-export MEDIUM_AUTH_STATE_FILE=/path/to/medium-auth.json
+export MEDIUM_AUTH_JSON=/path/to/medium-auth.json
 uv run medium-annoyed-api draft --file article.md --status draft --write-metadata
+```
+
+You can also pass it directly:
+
+```bash
+uv run medium-annoyed-api draft --file article.md --auth-json /path/to/medium-auth.json
+```
+
+If no auth JSON is passed and no env var is set, the CLI checks:
+
+```text
+~/.config/medium-auth.json
 ```
 
 Or only the Medium `sid` cookie:
@@ -66,7 +78,7 @@ browser where you are already logged into Medium:
 6. Point the CLI at it:
 
 ```bash
-export MEDIUM_AUTH_STATE_FILE="$PWD/medium-auth.json"
+export MEDIUM_AUTH_JSON="$PWD/medium-auth.json"
 uv run medium-annoyed-api draft --file article.md --status draft
 ```
 
