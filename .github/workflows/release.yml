@@ -64,7 +64,9 @@ jobs:
             exit 1
           fi
 
-          git fetch --tags origin main || true
+          if git remote get-url origin >/dev/null 2>&1; then
+            git fetch --tags origin main
+          fi
 
           if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
             tag_sha=$(git rev-list -n 1 "$tag")
@@ -76,7 +78,11 @@ jobs:
             exit 1
           fi
 
-          main_sha=$(git rev-parse origin/main 2>/dev/null || git rev-parse HEAD)
+          if git rev-parse --verify -q origin/main >/dev/null; then
+            main_sha=$(git rev-parse origin/main)
+          else
+            main_sha=$(git rev-parse HEAD)
+          fi
           if [[ "$tag_sha" != "$main_sha" ]]; then
             echo "Tag $tag must point at the tip of main." >&2
             echo "tag:  $tag_sha" >&2
@@ -102,12 +108,17 @@ jobs:
           sha256sum "release-dist/medium-annoyed-api-linux-x86_64" > "release-dist/medium-annoyed-api-linux-x86_64.sha256"
 
       - name: Upload executable artifact
+        if: env.ACT != 'true'
         uses: actions/upload-artifact@v6
         with:
           name: medium-annoyed-api-linux-x86_64
           path: |
             release-dist/medium-annoyed-api-linux-x86_64
             release-dist/medium-annoyed-api-linux-x86_64.sha256
+
+      - name: Show executable artifact under act
+        if: env.ACT == 'true'
+        run: ls -lh release-dist
 
       - name: Publish GitHub release
         if: env.ACT != 'true'

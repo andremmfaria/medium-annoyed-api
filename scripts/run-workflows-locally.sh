@@ -80,7 +80,12 @@ cat > "$event_file" <<EOF
 }
 EOF
 
-common_args=(workflow_dispatch --container-architecture linux/amd64 --eventpath "$event_file")
+common_args=(
+  workflow_dispatch
+  --container-architecture linux/amd64
+  --eventpath "$event_file"
+  -P ubuntu-latest=catthehacker/ubuntu:act-latest
+)
 
 if [[ -f .secrets.act ]]; then
   common_args+=(--secret-file .secrets.act)
