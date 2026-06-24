@@ -36,24 +36,38 @@ export MEDIUM_SESSION_COOKIE='...'
 uv run medium-annoyed-api draft --file article.md --status draft
 ```
 
-## Auth state helper
+## Browser auth state helper
 
-The CLI can read a Playwright-compatible auth state JSON. Build one from your
-Medium cookies with:
+The CLI can read a Playwright-compatible auth state JSON. Build one from the
+browser where you are already logged into Medium:
+
+1. Open `https://medium.com` in your browser.
+2. Open DevTools.
+3. Paste the contents of `scripts/create-medium-auth.js` into the browser console.
+4. The script copies JSON to your clipboard.
+5. Save that JSON as `medium-auth.json`.
+6. Point the CLI at it:
 
 ```bash
-MEDIUM_SESSION_COOKIE='...' node scripts/create-medium-auth.js --output medium-auth.json
 export MEDIUM_AUTH_STATE_FILE="$PWD/medium-auth.json"
+uv run medium-annoyed-api draft --file article.md --status draft
 ```
 
-If you also have `xsrf`, `uid`, or Cloudflare cookies, include them:
+Browser JavaScript cannot read cookies marked `HttpOnly`. If the generated JSON
+does not include `sid`, copy `sid` manually from DevTools → Application →
+Cookies → Medium and add it to the `cookies` array:
 
-```bash
-node scripts/create-medium-auth.js \
-  --sid '...' \
-  --xsrf '...' \
-  --uid '...' \
-  --cookie 'cf_clearance=...'
+```json
+{
+  "name": "sid",
+  "value": "...",
+  "domain": ".medium.com",
+  "path": "/",
+  "expires": 1790000000,
+  "httpOnly": true,
+  "secure": true,
+  "sameSite": "Lax"
+}
 ```
 
 Use `--dry-run` first. `--status public` exists, but do not use it until draft

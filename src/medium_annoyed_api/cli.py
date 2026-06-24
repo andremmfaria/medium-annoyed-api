@@ -6,9 +6,9 @@ from typing import Any
 
 import click
 
-from .frontmatter import read_article, write_frontmatter_field
-from .markdown_medium import article_to_medium_paragraphs
-from .medium_client import MediumClient, MediumClientError
+from medium_annoyed_api.frontmatter import read_article, write_frontmatter_field
+from medium_annoyed_api.medium_client import MediumClient, MediumClientError
+from medium_annoyed_api.medium_client.markdown import article_to_medium_paragraphs
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})

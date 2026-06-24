@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .medium_client import MediumClient, MediumClientError
+from medium_annoyed_api.medium_client.client import MediumClient, MediumClientError
 
 MediumSessionError = MediumClientError
 

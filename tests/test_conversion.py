@@ -3,7 +3,7 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from medium_annoyed_api.frontmatter import read_article
-from medium_annoyed_api.markdown_medium import article_to_medium_paragraphs
+from medium_annoyed_api.medium_client.markdown import article_to_medium_paragraphs
 
 
 class ConversionTests(unittest.TestCase):
