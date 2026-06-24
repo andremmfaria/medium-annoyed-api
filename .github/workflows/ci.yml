@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --all-groups --frozen
+
+      - name: Check browser-console auth helper syntax
+        run: node --check scripts/create-medium-auth.js
+
+      - name: Run tests
+        run: uv run python -m unittest discover -s tests -v
+
+      - name: Build package
+        run: uv build

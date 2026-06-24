@@ -14,6 +14,23 @@ This is intentionally a CLI, not an MCP server.
 uv sync
 ```
 
+## CI and releases
+
+GitHub Actions run tests, syntax-check the browser auth helper, and build the
+Python package. Release builds also produce a single-file Linux CLI executable
+with PyInstaller and upload it to the GitHub release.
+
+Releases are tag-driven. The tag must:
+
+- be named `v<version>` where `<version>` is the value in `pyproject.toml`
+- point at the current tip of `main`
+
+For local workflow simulation:
+
+```bash
+./scripts/run-workflows-locally.sh
+```
+
 ## Dry-run conversion
 
 ```bash
