@@ -36,5 +36,25 @@ export MEDIUM_SESSION_COOKIE='...'
 uv run medium-annoyed-api draft --file article.md --status draft
 ```
 
+## Auth state helper
+
+The CLI can read a Playwright-compatible auth state JSON. Build one from your
+Medium cookies with:
+
+```bash
+MEDIUM_SESSION_COOKIE='...' node scripts/create-medium-auth.js --output medium-auth.json
+export MEDIUM_AUTH_STATE_FILE="$PWD/medium-auth.json"
+```
+
+If you also have `xsrf`, `uid`, or Cloudflare cookies, include them:
+
+```bash
+node scripts/create-medium-auth.js \
+  --sid '...' \
+  --xsrf '...' \
+  --uid '...' \
+  --cookie 'cf_clearance=...'
+```
+
 Use `--dry-run` first. `--status public` exists, but do not use it until draft
 creation is proven against your Medium account.
