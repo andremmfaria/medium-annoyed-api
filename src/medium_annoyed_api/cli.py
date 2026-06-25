@@ -1,57 +1,27 @@
 from __future__ import annotations
 
-import argparse
 import asyncio
 import json
-import sys
 from typing import Any
+
+import click
 
 from .frontmatter import read_article, write_frontmatter_field
 from .markdown_medium import article_to_medium_paragraphs
-from .medium_session import MediumSessionError, create_medium_draft
+from .medium_client import MediumClient, MediumClientError
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="medium-annoyed-api",
-        description="Publish Markdown articles to Medium using session-backed internal editor calls.",
-    )
-    sub = parser.add_subparsers(dest="command", required=True)
-
-    convert = sub.add_parser("convert", help="Convert a markdown article to Medium paragraph JSON")
-    convert.add_argument("--file", "-f", required=True, help="Markdown article path")
-    convert.add_argument("--pretty", action="store_true", help="Pretty-print JSON")
-
-    draft = sub.add_parser("draft", help="Create a Medium draft from a markdown article")
-    draft.add_argument("--file", "-f", required=True, help="Markdown article path")
-    draft.add_argument("--status", choices=["draft", "public"], default="draft")
-    draft.add_argument("--tags", "-t", default=None, help="Override tags with comma-separated list")
-    draft.add_argument("--sid", default=None, help="Medium sid cookie; defaults to MEDIUM_SESSION_COOKIE")
-    draft.add_argument("--auth-state", default=None, help="Playwright storage-state JSON; defaults to MEDIUM_AUTH_STATE_FILE")
-    draft.add_argument("--dry-run", action="store_true", help="Print payload summary without calling Medium")
-    draft.add_argument("--write-metadata", action="store_true", help="Write medium_draft_id and medium_edit_url to frontmatter")
-
-    return parser
+@click.group(context_settings={"help_option_names": ["-h", "--help"]})
+def main() -> None:
+    """Publish Markdown articles to Medium using session-backed editor calls."""
 
 
-def main(argv: list[str] | None = None) -> None:
-    parser = build_parser()
-    args = parser.parse_args(argv)
-
-    try:
-        if args.command == "convert":
-            _cmd_convert(args)
-        elif args.command == "draft":
-            asyncio.run(_cmd_draft(args))
-        else:
-            parser.error(f"unknown command: {args.command}")
-    except MediumSessionError as exc:
-        print(f"medium-annoyed-api: {exc}", file=sys.stderr)
-        raise SystemExit(2) from exc
-
-
-def _cmd_convert(args: argparse.Namespace) -> None:
-    article = read_article(args.file)
+@main.command()
+@click.option("--file", "-f", "file_path", required=True, type=click.Path(exists=True, dir_okay=False), help="Markdown article path.")
+@click.option("--pretty", is_flag=True, help="Pretty-print JSON.")
+def convert(file_path: str, pretty: bool) -> None:
+    """Convert a Markdown article to Medium paragraph JSON."""
+    article = read_article(file_path)
     paragraphs = article_to_medium_paragraphs(article.title, article.body, article.path.parent)
     output = {
         "title": article.title,
@@ -60,41 +30,72 @@ def _cmd_convert(args: argparse.Namespace) -> None:
         "paragraph_count": len(paragraphs),
         "paragraphs": paragraphs,
     }
-    print(json.dumps(output, indent=2 if args.pretty else None, ensure_ascii=False))
+    click.echo(json.dumps(output, indent=2 if pretty else None, ensure_ascii=False))
 
 
-async def _cmd_draft(args: argparse.Namespace) -> None:
-    article = read_article(args.file)
+@main.command()
+@click.option("--file", "-f", "file_path", required=True, type=click.Path(exists=True, dir_okay=False), help="Markdown article path.")
+@click.option("--status", type=click.Choice(["draft", "public"]), default="draft", show_default=True)
+@click.option("--tags", "-t", default=None, help="Override tags with a comma-separated list.")
+@click.option("--sid", default=None, help="Medium sid cookie; defaults to MEDIUM_SESSION_COOKIE.")
+@click.option("--auth-state", default=None, help="Playwright storage-state JSON; defaults to MEDIUM_AUTH_STATE_FILE.")
+@click.option("--dry-run", is_flag=True, help="Print payload summary without calling Medium.")
+@click.option("--write-metadata", is_flag=True, help="Write medium_draft_id and medium_edit_url to frontmatter.")
+def draft(
+    file_path: str,
+    status: str,
+    tags: str | None,
+    sid: str | None,
+    auth_state: str | None,
+    dry_run: bool,
+    write_metadata: bool,
+) -> None:
+    """Create a Medium draft from a Markdown article."""
+    try:
+        asyncio.run(_draft_async(file_path, status, tags, sid, auth_state, dry_run, write_metadata))
+    except MediumClientError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
+async def _draft_async(
+    file_path: str,
+    status: str,
+    tags: str | None,
+    sid: str | None,
+    auth_state: str | None,
+    dry_run: bool,
+    write_metadata: bool,
+) -> None:
+    article = read_article(file_path)
     paragraphs = article_to_medium_paragraphs(article.title, article.body, article.path.parent)
-    tags = _parse_tags(args.tags) if args.tags else article.tags
+    resolved_tags = _parse_tags(tags) if tags else article.tags
 
     summary: dict[str, Any] = {
         "title": article.title,
-        "status": args.status,
-        "tags": tags[:5],
+        "status": status,
+        "tags": resolved_tags[:5],
         "canonical_url": article.canonical_url,
         "paragraph_count": len(paragraphs),
         "image_count": sum(1 for paragraph in paragraphs if paragraph.get("type") == 4),
     }
 
-    if args.dry_run:
+    if dry_run:
         summary["dry_run"] = True
         summary["paragraphs"] = paragraphs
-        print(json.dumps(summary, indent=2, ensure_ascii=False))
+        click.echo(json.dumps(summary, indent=2, ensure_ascii=False))
         return
 
-    result = await create_medium_draft(
+    client = MediumClient(auth_state_file=auth_state, sid=sid)
+    result = await client.create_draft(
         title=article.title,
         paragraphs=paragraphs,
-        tags=tags,
-        status=args.status,
-        auth_state_file=args.auth_state,
-        sid=args.sid,
+        tags=resolved_tags,
+        status=status,
     )
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+    click.echo(json.dumps(result, indent=2, ensure_ascii=False))
 
     post_id = result.get("id")
-    if args.write_metadata and post_id:
+    if write_metadata and post_id:
         write_frontmatter_field(article.path, "medium_draft_id", str(post_id))
         if result.get("editUrl"):
             write_frontmatter_field(article.path, "medium_edit_url", str(result["editUrl"]))
